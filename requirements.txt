@@ -1,0 +1,15 @@
+# Install PyTorch separately — see https://pytorch.org/get-started/locally/
+timm==1.0.27
+opencv-python==4.13.0.*
+numpy==2.4.4
+scipy==1.17.1
+scikit-learn==1.8.0
+scikit-image==0.26.0
+faiss-cpu
+umap-learn
+matplotlib
+
+# XRTECH live sensor + GUI
+pillow>=11.0.0
+flask>=2.3.0
+flask-cors>=4.0.0

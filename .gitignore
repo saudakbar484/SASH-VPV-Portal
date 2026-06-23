@@ -1,0 +1,53 @@
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+.idea/
+.vscode/
+
+# Secrets
+.env
+.env.*
+!.env.example
+Google OAuth/
+**/Google OAuth/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Large binaries (keep checkpoints locally; don't commit unless intended)
+# models/checkpoints/**/*.pt
+
+# Outputs (regenerable)
+outputs/figures/*.png
+outputs/logs/*.log
+outputs/
+
+# Data and local runtime artifacts (do not push datasets)
+data/raw/
+data/dataset/
+data/users/
+data/processed/
+data/store/
+data/*.db
+*.sqlite
+*.sqlite3
+
+# Model / training artifacts
+models/checkpoints/
+training/gpu/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Requested project-level ignores
+docs/
+doc/
+archive/
+plan.md
+Plan.md
+setup.md
+Setup.md
+plan_vein_project_2day_schedule.xlsx
+Palm_Vein_Project_2Day_Schedule.xlsx
