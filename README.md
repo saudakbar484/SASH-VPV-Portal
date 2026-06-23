@@ -1,7 +1,5 @@
 # SASH-VPV Portal
 
-NIR palm vein biometric pipeline: preprocessing → EfficientNet-B0 + CBAM embedding → ArcFace metric learning → FAISS deployment.
-
 ## Project team
 
 **University:** National University of Technology (NUTECH), Islamabad
