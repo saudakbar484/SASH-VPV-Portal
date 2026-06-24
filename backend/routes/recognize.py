@@ -63,7 +63,7 @@ def _grab_probe_frame() -> tuple[Optional[Path], Optional[bytes]]:
     device = get_device()
     if not device.is_connected():
         return None, None
-    raw = get_fresh_frame()
+    raw = get_fresh_frame(max_wait_s=1.5)
     if not raw:
         return None, None
     ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]

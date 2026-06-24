@@ -20,11 +20,29 @@ const STEPS = ["Capturing palm frame…", "Extracting vein pattern…", "Matchin
 export function PalmRecognitionPanel({ className }: { className?: string }) {
   const [stepIdx, setStepIdx] = useState(0)
   const [probeUrl, setProbeUrl] = useState<string | null>(null)
+  const [verifyError, setVerifyError] = useState<string | null>(null)
+
+  const parseApiError = (err: unknown, fallback: string) => {
+    const ax = err as { response?: { data?: { detail?: unknown }; status?: number }; message?: string }
+    const detail = ax?.response?.data?.detail
+    if (typeof detail === "string") return detail
+    if (Array.isArray(detail) && detail.length > 0) {
+      const first = detail[0] as { msg?: string }
+      if (typeof first?.msg === "string") return first.msg
+    }
+    if (ax?.response?.status === 401) return "Session expired or not signed in. Please sign in again."
+    if (!ax?.response && ax?.message?.includes("Network")) return "Cannot reach server — is backend running?"
+    return fallback
+  }
 
   const verify = useMutation({
     mutationFn: endpoints.user.verifyPalm,
     onSuccess: (data) => {
+      setVerifyError(null)
       if (data.probe_image_url) setProbeUrl(`${data.probe_image_url}&t=${Date.now()}`)
+    },
+    onError: (err) => {
+      setVerifyError(parseApiError(err, "Palm verification failed"))
     },
   })
 
@@ -47,7 +65,7 @@ export function PalmRecognitionPanel({ className }: { className?: string }) {
     <div className={cn("grid gap-4 lg:grid-cols-2 lg:items-start", className)}>
       <HudPanel title="Recognition camera" className="flex flex-col">
         <div className={cn("flex flex-col", SCANNER_PANEL_CONTENT_CLASS)}>
-          <LiveFeedToolbar className="mb-2 shrink-0" />
+          <LiveFeedToolbar className="mb-2 shrink-0" showDistance />
           <div className="relative min-h-0 flex-1">
             <LiveFeed fill />
           </div>
@@ -89,9 +107,18 @@ export function PalmRecognitionPanel({ className }: { className?: string }) {
           </div>
         </HudPanel>
 
-        <Button className="btn-brand w-full" size="lg" disabled={verify.isPending} onClick={() => verify.mutate()}>
+        <Button
+          className="btn-brand w-full"
+          size="lg"
+          disabled={verify.isPending}
+          onClick={() => {
+            setVerifyError(null)
+            verify.mutate()
+          }}
+        >
           {verify.isPending ? <Loader2 className="animate-spin" /> : "Recognize your palm"}
         </Button>
+        {verifyError && <p className="text-center text-sm text-red-500">{verifyError}</p>}
 
         {data?.matched && (
           <div className="flex items-center gap-2 text-emerald-500">
@@ -101,8 +128,8 @@ export function PalmRecognitionPanel({ className }: { className?: string }) {
         )}
         {data && !data.matched && !verify.isPending && (
           <div className="flex items-center gap-2 text-red-500">
-            <XCircle className="size-5" />
-            No match — adjust hand position and try again
+            <XCircle className="size-5 shrink-0" />
+            <span className="text-sm">{data.message ?? "No match — adjust hand position and try again"}</span>
           </div>
         )}
       </div>

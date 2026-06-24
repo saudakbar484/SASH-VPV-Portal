@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -8,11 +8,23 @@ import { useAppStore } from "@/store/useAppStore"
 interface LiveFeedToolbarProps {
   className?: string
   showLiveBadge?: boolean
+  showDistance?: boolean
 }
 
-export function LiveFeedToolbar({ className, showLiveBadge = true }: LiveFeedToolbarProps) {
+export function LiveFeedToolbar({
+  className,
+  showLiveBadge = true,
+  showDistance = false,
+}: LiveFeedToolbarProps) {
   const queryClient = useQueryClient()
   const bumpStreamKey = useAppStore((s) => s.bumpStreamKey)
+
+  const palmDist = useQuery({
+    queryKey: ["palm-distance"],
+    queryFn: endpoints.hardware.palmDistance,
+    refetchInterval: showDistance ? 800 : false,
+    enabled: showDistance,
+  })
 
   const reconnect = useMutation({
     mutationFn: endpoints.device.reconnect,
@@ -24,7 +36,21 @@ export function LiveFeedToolbar({ className, showLiveBadge = true }: LiveFeedToo
 
   return (
     <div className={cn("mb-3 flex items-center justify-between gap-2", className)}>
-      <p className="text-xs uppercase tracking-wider text-brand-muted">Live scanner feed</p>
+      <div className="min-w-0">
+        <p className="text-xs uppercase tracking-wider text-brand-muted">Live scanner feed</p>
+        {showDistance && palmDist.data && (
+          <p
+            className={cn(
+              "mt-0.5 text-[10px] font-mono",
+              palmDist.data.in_range ? "text-emerald-500" : "text-amber-600",
+            )}
+          >
+            {palmDist.data.distance_mm != null
+              ? `${palmDist.data.distance_mm} mm${palmDist.data.in_range ? " · in range" : " · move palm closer (3–8 cm)"}`
+              : "Place palm 3–8 cm above sensor"}
+          </p>
+        )}
+      </div>
       <div className="flex items-center gap-2">
         <Button
           size="sm"

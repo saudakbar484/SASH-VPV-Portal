@@ -18,6 +18,22 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status
+    const url = String(error?.config?.url ?? "")
+    const isAuthRoute =
+      url.includes("/api/auth/login") ||
+      url.includes("/api/auth/register") ||
+      url.includes("/api/auth/google")
+    if (status === 401 && !isAuthRoute) {
+      useAuthStore.getState().clearAuth()
+    }
+    return Promise.reject(error)
+  },
+)
+
 // --- Shared payload types ---------------------------------------------------
 
 export interface DeviceStatus {
@@ -571,7 +587,7 @@ export const endpoints = {
         .then((r) => r.data),
     forgotPassword: (email: string) =>
       api
-        .post<{ success: boolean; email_sent: boolean; message: string }>(
+        .post<{ success: boolean; email_sent: boolean; message: string; dev_code?: string | null }>(
           "/api/auth/password/forgot",
           { email },
         )

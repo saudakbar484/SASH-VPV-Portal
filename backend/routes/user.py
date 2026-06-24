@@ -180,7 +180,7 @@ def verify_palm(
     if not device.is_connected():
         raise HTTPException(status_code=503, detail="Scanner not connected")
 
-    raw = get_fresh_frame()
+    raw = get_fresh_frame(max_wait_s=1.5)
     if not raw:
         return PalmVerifyResponse(
             success=False,
@@ -195,8 +195,20 @@ def verify_palm(
     probe_path = USERS_REF_DIR / "_captures" / f"verify_{account.id}_{ts}.png"
     probe_path.parent.mkdir(parents=True, exist_ok=True)
     save_frame_png(raw, probe_path)
-    probe = embed_png_bytes(raw)
     probe_url = f"/api/auth/login/probe?file={probe_path.name}"
+    try:
+        probe = embed_png_bytes(raw)
+    except Exception as e:
+        latency_ms = int((time.perf_counter() - t0) * 1000)
+        return PalmVerifyResponse(
+            success=False,
+            matched=False,
+            similarity=0.0,
+            threshold=LOGIN_MATCH_THRESHOLD,
+            latency_ms=latency_ms,
+            probe_image_url=probe_url,
+            message=str(e),
+        )
 
     match = secure_match_for_account(probe, account.id)
     matched = match.matched

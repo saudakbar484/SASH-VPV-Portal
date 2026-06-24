@@ -37,6 +37,13 @@ export function Recognition() {
   const identities = useQuery({
     queryKey: ["admin-registered-identities"],
     queryFn: endpoints.admin.registeredIdentities,
+    retry: false,
+  })
+
+  const gallery = useQuery({
+    queryKey: ["public-stats"],
+    queryFn: endpoints.public.stats,
+    staleTime: 30_000,
   })
 
   const verify = useMutation({
@@ -70,6 +77,13 @@ export function Recognition() {
   })
 
   const enrolledPeople = identities.data?.identities ?? []
+  const verifiablePeople = enrolledPeople.filter((person) =>
+    person.hands.some((hand) => hand.enrolled),
+  )
+  const gallerySize = gallery.data?.enrolled_identities ?? 0
+  const identitiesAuthError =
+    identities.isError &&
+    (identities.error as { response?: { status?: number } })?.response?.status === 401
 
   return (
     <div className="space-y-6">
@@ -83,7 +97,7 @@ export function Recognition() {
           title="Live scanner"
           description="Each Verify or Identify click captures one frame and runs the neural matcher."
         >
-          <LiveFeedToolbar className="mb-2" />
+          <LiveFeedToolbar className="mb-2" showDistance />
           <LiveFeedFrame>
             <LiveFeed size="standard" />
           </LiveFeedFrame>
@@ -102,15 +116,19 @@ export function Recognition() {
 
             <TabsContent value="verify" className="mt-4 space-y-4">
               <GlassPanel title="Claim and prove">
-                {identities.isPending ? (
+                {identitiesAuthError ? (
+                  <p className="text-sm text-red-500">
+                    Session expired. Please sign out and sign in again as admin.
+                  </p>
+                ) : identities.isPending ? (
                   <p className="text-sm text-[var(--muted-foreground)]">Loading identities…</p>
-                ) : enrolledPeople.length === 0 ? (
+                ) : verifiablePeople.length === 0 ? (
                   <p className="text-sm text-[var(--muted-foreground)]">
-                    No users enrolled yet. Use Enrollment or Signup first.
+                    No enrolled palm templates yet. Use Enrollment or Signup first.
                   </p>
                 ) : (
                   <div className="max-h-56 space-y-1 overflow-y-auto">
-                    {enrolledPeople.map((person) => (
+                    {verifiablePeople.map((person) => (
                       <PersonRow
                         key={person.account_id}
                         person={person}
@@ -144,13 +162,19 @@ export function Recognition() {
             <TabsContent value="identify" className="mt-4 space-y-4">
               <GlassPanel title="Who is this?">
                 <p className="mb-3 text-xs text-[var(--muted-foreground)]">
-                  Hold palm steady over the scanner. First scan after restart may take up to a minute while the model loads.
+                  Hold palm steady 3–8 cm above the scanner until veins appear in the live feed.
+                  First scan after restart may take up to a minute while the model loads.
                 </p>
+                {gallerySize === 0 && !gallery.isPending && (
+                  <p className="mb-3 text-sm text-[var(--muted-foreground)]">
+                    No enrolled templates in gallery yet.
+                  </p>
+                )}
                 <Button
                   className="w-full btn-brand "
                   size="lg"
                   onClick={() => identify.mutate()}
-                  disabled={identify.isPending || enrolledPeople.length === 0}
+                  disabled={identify.isPending || gallerySize === 0}
                 >
                   {identify.isPending ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -248,12 +272,15 @@ function ResultCard({ verify }: { verify: VerifyResponse }) {
 
 function IdentifyCard({ data }: { data: IdentifyResponse }) {
   const best = data.candidates[0]
+  const hasCandidates = data.candidates.length > 0
   return (
     <GlassPanel
       title={
         data.matched
           ? `Matched: ${best?.name ?? "—"}`
-          : "No match above threshold"
+          : data.rejected_reason
+            ? "Capture rejected"
+            : "No match above threshold"
       }
       icon={
         data.matched ? (
@@ -262,7 +289,11 @@ function IdentifyCard({ data }: { data: IdentifyResponse }) {
           <CircleX className="size-5 text-red-400" />
         )
       }
-      description={`Top ${data.candidates.length} candidates · ${data.latency_ms} ms`}
+      description={
+        hasCandidates
+          ? `Top ${data.candidates.length} candidates · ${data.latency_ms} ms`
+          : `${data.latency_ms} ms`
+      }
     >
       {best && (
         <ConfidenceBar
